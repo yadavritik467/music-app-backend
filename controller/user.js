@@ -115,18 +115,6 @@ export const updateMyProfile = async (req, res) => {
     }
 }
 
-export const preferSongs = async (req, res) => {
-    try {
-        const { preferSongs } = req.body
-        const user = await User.findById(req.user._id)
-        user.preferSongs = preferSongs
-        await user.save()
-        return res.status(200).json({ user })
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-}
-
 export const uploadSongs = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
@@ -206,7 +194,7 @@ export const showUserDetailsOfUser = async (req, res) => {
                 path: 'albumCreation',
                 populate: {
                     path: 'uploadedSongs',
-                    select: 'songName songs'
+                    select: 'songName songs listeningCount'
                 }
             });
 
@@ -218,7 +206,6 @@ export const showUserDetailsOfUser = async (req, res) => {
                 removeVisitedUserById(req.params.id, req.user._id);
             }, expiryTime - Date.now());
         }
-
         return res.status(200).json({ message: 'User details fetched successfully', allDetails });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -227,17 +214,22 @@ export const showUserDetailsOfUser = async (req, res) => {
 
 export const getAllUser = async (req, res) => {
     try {
-        const { page = 1, limit = 2, search } = req.query
+        const { page = 1, limit = 5, search } = req.query
         const condition = search
             ? {
-                $or: [
-                    { email: { $regex: new RegExp(search, 'i') } },
-                    { firstName: { $regex: new RegExp(search, 'i') } },
-                    { lastName: { $regex: new RegExp(search, 'i') } },
-                ],
+               $and:[
+                {
+                    $or: [
+                        { email: { $regex: new RegExp(search, 'i') } },
+                        { firstName: { $regex: new RegExp(search, 'i') } },
+                        { lastName: { $regex: new RegExp(search, 'i') } },
+                    ],
+                },
+                {_id:{$ne:req.user._id}}
+               ]
             }
-            : {};
-        const allUser = await User.find(condition, { firstName:1,lastName:1,email: 1, profilePicture: 1 })
+            : {_id:{$ne:req.user._id}};
+        const allUser = await User.find(condition, { firstName: 1, lastName: 1, email: 1, profilePicture: 1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
         return res.status(200).json({ message: 'All user fetched successfully', allUser });
@@ -246,14 +238,30 @@ export const getAllUser = async (req, res) => {
     }
 }
 
+// for songs
+
 export const getAllSongs = async (req, res) => {
     try {
-        const { page = 1, limit = 2, search } = req.query
+        const { page = 1, limit = 5, search } = req.query
         const condition = search ? { songName: { $regex: new RegExp(search, 'i') } } : {}
-        const allSongs = await Song.find(condition, { songName: 1 })
+        const allSongs = await Song.find(condition, { songName: 1 }).sort()
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
         return res.status(200).json({ message: 'All songs fetched successfully', allSongs });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+export const listenSongs = async (req, res) => {
+    try {
+        const song = await Song.findById(req.params.id)
+        if (!song.listeningCount.includes(req.user._id)) {
+            song.listeningCount.push(req.user._id)
+        }
+        await song.save()
+        return res.status(200).json({ message: 'Single song fetch', song })
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

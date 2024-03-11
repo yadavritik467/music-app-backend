@@ -5,9 +5,12 @@ const songsSchema = new mongoose.Schema({
     songName: {
         type: String,
     },
-   songs:{
-    type:String
-   }
+    songs: {
+        type: String
+    },
+    listeningCount: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+    }
 })
 
 

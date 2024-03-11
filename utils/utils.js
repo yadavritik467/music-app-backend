@@ -1,3 +1,5 @@
+import User from "../model/user.js"
+
 export const removeVisitedUserById = async (id, userId) => {
     try {
         const allDetails = await User.findById(id);
