@@ -77,7 +77,7 @@
 - endpoint = `/uploadSongs`
 
 ```
-![payload for uploading songs](./assets/Screenshot%20(144).png)
+![payload for uploading songs](/assets/img.png)
 
 ```
 
