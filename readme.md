@@ -9,7 +9,7 @@
 
 # backend api
 
-- Url = `http://localhost:4500/api/v1/${endPoint} `
+- Url = `https://music-app-backend-two.vercel.app/api/v1/${endPoint} `
 
 # register user post api
 
