@@ -22,8 +22,14 @@ const userSchema = new mongoose.Schema({
         require: true,
     },
     profilePicture: {
-        type: String,
-        default: null
+        public_id: {
+            type: String,
+            default: null
+        },
+        url: {
+            type: String,
+            default: null
+        }
     },
     preferSongs: {
         type: [
@@ -45,8 +51,14 @@ const userSchema = new mongoose.Schema({
         type: [
             {
                 albumImage: {
-                    type: String,
-                    default: null
+                    public_id: {
+                        type: String,
+                        default: null
+                    },
+                    url: {
+                        type: String,
+                        default: null
+                    }
                 },
                 albumName: {
                     type: String,
@@ -57,13 +69,13 @@ const userSchema = new mongoose.Schema({
             }
         ]
     },
-    createdAt:{
-        type:Date,
-        default:Date.now()
+    createdAt: {
+        type: Date,
+        default: Date.now()
     },
-    updatedAt:{
-        type:Date,
-        default:Date.now()
+    updatedAt: {
+        type: Date,
+        default: Date.now()
     }
 })
 

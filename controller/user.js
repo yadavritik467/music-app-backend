@@ -1,5 +1,6 @@
 import Song from "../model/songs.js";
 import User from "../model/user.js";
+import cloudinary from "cloudinary";
 import { removeVisitedUserById } from "../utils/utils.js";
 import fs from 'fs'
 
@@ -71,16 +72,26 @@ export const myProfile = async (req, res) => {
 
 export const uploadProfilePicture = async (req, res) => {
     try {
-        const profilePicture = req.file
+        const profilePicture = req.body.file
+
         const user = await User.findById(req.user._id)
-        if (user.profilePicture) {
-            fs.unlinkSync(`./${user.profilePicture}`)
-            user.profilePicture = null
-            user.profilePicture = profilePicture.path
-            await user.save()
-            return res.status(200).json({ message: 'Profile picture updated successfully' });
+
+        if (user.profilePicture.public_id && user.profilePicture.url) {
+            await cloudinary.v2.uploader.destroy(user.profilePicture.public_id)
+            user.profilePicture.public_id = null
+            user.profilePicture.url = null
         }
+        const myCloud = await cloudinary.v2.uploader.upload(profilePicture, {
+            folder: "music-image",
+            resource_type: "auto",
+        })
+        user.profilePicture.public_id = myCloud.public_id
+        user.profilePicture.url = myCloud.url
+
+        await user.save()
+        return res.status(200).json({ message: 'Profile picture updated successfully' });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ message: error.message });
     }
 }
@@ -88,9 +99,10 @@ export const uploadProfilePicture = async (req, res) => {
 export const deleteProfilePicture = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-        if (user.profilePicture) {
-            fs.unlinkSync(`./${user.profilePicture}`)
-            user.profilePicture = null
+        if (user.profilePicture.public_id && user.profilePicture.url) {
+            await cloudinary.v2.uploader.destroy(user.profilePicture.public_id)
+            user.profilePicture.public_id = null
+            user.profilePicture.url = null
             await user.save()
             return res.status(200).json({ message: 'Profile picture deleted successfully' });
         } else {
@@ -109,7 +121,7 @@ export const updateMyProfile = async (req, res) => {
         if (lastName) user.lastName = lastName
         if (email) user.email = email
         await user.save()
-        return res.status(200).json({ message: 'Profile updated successfully', user });
+        return res.status(200).json({ message: 'Profile updated successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -118,31 +130,60 @@ export const updateMyProfile = async (req, res) => {
 export const uploadSongs = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-        const { albumName } = req.body;
-        const albumImage = req.files.file[0]
+        const { albumName, file, song } = req.body;
+        console.log(song)
 
         const existingAlbumName = user.albumCreation.find(album => album.albumName === albumName)
         if (existingAlbumName) {
             return res.status(401).json({ message: 'This album name is already exists' });
         } else {
+            const myCloudArray = []
+            const myCloud = await cloudinary.v2.uploader.upload(file, {
+                folder: "music-image",
+                resource_type: "auto",
+            })
+
+            for (const songs of song) {
+                try {
+                    const myCloud_2 = await cloudinary.v2.uploader.upload(song[songs], {
+                        folder: "songs",
+                        resource_type: "auto",
+                    });
+                    myCloudArray.push(myCloud_2);
+                    return myCloudArray
+                } catch (error) {
+                    console.error("Error uploading file to Cloudinary:", error);
+                    // Handle error if needed
+                }
+            }
+
+            // console.log(myCloudArray)
             let uploadedSongsId = []
-            await Promise.all(req?.files?.songs?.map(async (song) => {
-                const newSong = await Song.create({
-                    songName: song.originalname,
-                    songs: song.path
-                })
-                uploadedSongsId.push(newSong._id)
-                return newSong
+            await Promise.all(req?.body?.song?.map(async (songs) => {
+                // const myCloud_2 = await cloudinary.v2.uploader.upload(songs, {
+                //     folder: "songs",
+                // });
+                // console.log(myCloud_2)
+                // const newSong = await Song.create({
+                //     songName: song.originalname,
+                //     songs: song.path
+                // })
+                // uploadedSongsId.push(newSong._id)
+                // return newSong
             }))
-            user.albumCreation.push({
-                albumImage: albumImage.path,
-                albumName: albumName,
-                uploadedSongs: uploadedSongsId,
-            });
-            await user.save()
+            // user.albumCreation.push({
+            //     albumImage: {
+            //         public_id: albumImage?.myCloud?.public_id,
+            //         url: albumImage?.myCloud?.url
+            //     },
+            //     albumName: albumName,
+            //     uploadedSongs: uploadedSongsId,
+            // });
+            // await user.save()
             return res.status(200).json({ message: 'Songs uploaded and data saved successfully', user });
         }
     } catch (error) {
+        console.log(error)
         res.status(500).json({ message: error.message });
     }
 }
@@ -217,18 +258,18 @@ export const getAllUser = async (req, res) => {
         const { page = 1, limit = 5, search } = req.query
         const condition = search
             ? {
-               $and:[
-                {
-                    $or: [
-                        { email: { $regex: new RegExp(search, 'i') } },
-                        { firstName: { $regex: new RegExp(search, 'i') } },
-                        { lastName: { $regex: new RegExp(search, 'i') } },
-                    ],
-                },
-                {_id:{$ne:req.user._id}}
-               ]
+                $and: [
+                    {
+                        $or: [
+                            { email: { $regex: new RegExp(search, 'i') } },
+                            { firstName: { $regex: new RegExp(search, 'i') } },
+                            { lastName: { $regex: new RegExp(search, 'i') } },
+                        ],
+                    },
+                    { _id: { $ne: req.user._id } }
+                ]
             }
-            : {_id:{$ne:req.user._id}};
+            : { _id: { $ne: req.user._id } };
         const allUser = await User.find(condition, { firstName: 1, lastName: 1, email: 1, profilePicture: 1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));

@@ -6,7 +6,14 @@ const songsSchema = new mongoose.Schema({
         type: String,
     },
     songs: {
-        type: String
+        public_id: {
+            type: String,
+            default: null
+        },
+        url: {
+            type: String,
+            default: null
+        }
     },
     listeningCount: {
         type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
