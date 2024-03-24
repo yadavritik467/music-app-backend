@@ -2,7 +2,7 @@ import Song from "../model/songs.js";
 import User from "../model/user.js";
 import cloudinary from "cloudinary";
 import { removeVisitedUserById } from "../utils/utils.js";
-import fs from 'fs'
+
 
 
 // for register user
@@ -73,9 +73,7 @@ export const myProfile = async (req, res) => {
 export const uploadProfilePicture = async (req, res) => {
     try {
         const profilePicture = req.body.file
-
         const user = await User.findById(req.user._id)
-
         if (user.profilePicture.public_id && user.profilePicture.url) {
             await cloudinary.v2.uploader.destroy(user.profilePicture.public_id)
             user.profilePicture.public_id = null
@@ -87,7 +85,6 @@ export const uploadProfilePicture = async (req, res) => {
         })
         user.profilePicture.public_id = myCloud.public_id
         user.profilePicture.url = myCloud.url
-
         await user.save()
         return res.status(200).json({ message: 'Profile picture updated successfully' });
     } catch (error) {
@@ -131,55 +128,41 @@ export const uploadSongs = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
         const { albumName, file, song } = req.body;
-        console.log(song)
-
         const existingAlbumName = user.albumCreation.find(album => album.albumName === albumName)
         if (existingAlbumName) {
             return res.status(401).json({ message: 'This album name is already exists' });
         } else {
-            const myCloudArray = []
             const myCloud = await cloudinary.v2.uploader.upload(file, {
                 folder: "music-image",
                 resource_type: "auto",
             })
-
-            for (const songs of song) {
-                try {
-                    const myCloud_2 = await cloudinary.v2.uploader.upload(song[songs], {
-                        folder: "songs",
-                        resource_type: "auto",
-                    });
-                    myCloudArray.push(myCloud_2);
-                    return myCloudArray
-                } catch (error) {
-                    console.error("Error uploading file to Cloudinary:", error);
-                    // Handle error if needed
-                }
-            }
-
-            // console.log(myCloudArray)
             let uploadedSongsId = []
-            await Promise.all(req?.body?.song?.map(async (songs) => {
-                // const myCloud_2 = await cloudinary.v2.uploader.upload(songs, {
-                //     folder: "songs",
-                // });
-                // console.log(myCloud_2)
-                // const newSong = await Song.create({
-                //     songName: song.originalname,
-                //     songs: song.path
-                // })
-                // uploadedSongsId.push(newSong._id)
-                // return newSong
+            await Promise.all(song.map(async (s) => {
+                const myCloud_2 = await cloudinary.v2.uploader.upload(s?.base64Url, {
+                    folder: "songs",
+                    resource_type: "auto"
+                });
+
+                const newSong = await Song.create({
+                    songName: s.name,
+                    songs: {
+                        public_id: myCloud_2.public_id,
+                        url: myCloud_2.url,
+                    }
+                })
+                uploadedSongsId.push(newSong._id)
+                return newSong
+
             }))
-            // user.albumCreation.push({
-            //     albumImage: {
-            //         public_id: albumImage?.myCloud?.public_id,
-            //         url: albumImage?.myCloud?.url
-            //     },
-            //     albumName: albumName,
-            //     uploadedSongs: uploadedSongsId,
-            // });
-            // await user.save()
+            user?.albumCreation.push({
+                albumImage: {
+                    public_id: myCloud?.public_id,
+                    url: myCloud?.url
+                },
+                albumName: albumName,
+                uploadedSongs: uploadedSongsId,
+            });
+            await user.save()
             return res.status(200).json({ message: 'Songs uploaded and data saved successfully', user });
         }
     } catch (error) {
