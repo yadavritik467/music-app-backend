@@ -290,3 +290,38 @@ export const listenSongs = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+
+export const deleteMyProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id)
+        if (!user) {
+            return res.status(400).json({ message: 'User not exists' })
+        } else {
+            await cloudinary.v2.uploader.destroy(user.profilePicture.public_id)
+            user.profilePicture.public_id = null
+            user.profilePicture.url = null
+
+            
+            const followerToUpdate = await User.find({ follower: req.params.id })
+            const followingToUpdate = await User.find({ following: req.params.id })
+            await Promise.all(followerToUpdate.map(async (follower) => {
+                const index = follower.follower.indexOf(req.params.id)
+                if (index != -1) {
+                    follower.follower.splice(index, 1)
+                }
+                await user.save()
+            }))
+            await Promise.all(followingToUpdate.map(async (following) => {
+                const index = following.following.indexOf(req.params.id)
+                if (index != -1) {
+                    following.following.splice(index, 1)
+                }
+                await user.save()
+            }))
+            return res.status(200).json({ message: 'profile deleted successfully', followerToUpdate })
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
