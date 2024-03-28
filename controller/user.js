@@ -50,7 +50,6 @@ export const loginUser = async (req, res) => {
                 return res.status(200)
                     .json({
                         message: "login succesfully",
-                        user,
                         token
                     })
             }
@@ -302,7 +301,7 @@ export const deleteMyProfile = async (req, res) => {
             user.profilePicture.public_id = null
             user.profilePicture.url = null
 
-            
+
             const followerToUpdate = await User.find({ follower: req.params.id })
             const followingToUpdate = await User.find({ following: req.params.id })
             await Promise.all(followerToUpdate.map(async (follower) => {
