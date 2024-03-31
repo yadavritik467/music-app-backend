@@ -200,6 +200,7 @@ export const followUnFollowUser = async (req, res) => {
 
 export const showUserDetailsOfUser = async (req, res) => {
     try {
+        const user = await User.findById(req.user._id)
         const allDetails = await User.findById(req.params.id)
             .populate({
                 path: 'follower',
@@ -221,12 +222,12 @@ export const showUserDetailsOfUser = async (req, res) => {
                 }
             });
 
-        if (!allDetails.visited.includes(req.user._id)) {
+        if (!allDetails.visited.some(visit => visit._id.toString().trim() === user._id.toString().trim())) {
             const expiryTime = Date.now() + 24 * 60 * 60 * 1000;
-            allDetails.visited.push(req.user._id);
+            await allDetails.visited.push(user._id);
             await allDetails.save()
             setTimeout(() => {
-                removeVisitedUserById(req.params.id, req.user._id);
+                removeVisitedUserById(req.params.id, user._id);
             }, expiryTime - Date.now());
         }
         return res.status(200).json({ message: 'User details fetched successfully', allDetails });
