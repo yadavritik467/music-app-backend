@@ -268,7 +268,7 @@ export const getAllSongs = async (req, res) => {
     try {
         const { page = 1, limit = 5, search } = req.query
         const condition = search ? { songName: { $regex: new RegExp(search, 'i') } } : {}
-        const allSongs = await Song.find(condition, { songName: 1 }).sort()
+        const allSongs = await Song.find(condition, { songName: 1,songs:1 }).sort()
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
         return res.status(200).json({ message: 'All songs fetched successfully', allSongs });
