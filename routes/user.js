@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerUser, loginUser, myProfile, uploadSongs, followUnFollowUser, showUserDetailsOfUser, getAllUser, getAllSongs, uploadProfilePicture, deleteProfilePicture, updateMyProfile, listenSongs, deleteMyProfile } from '../controller/user.js';
+import { registerUser, loginUser, myProfile, uploadSongs, followUnFollowUser, showUserDetailsOfUser, getAllUser, getAllSongs, uploadProfilePicture, deleteProfilePicture, updateMyProfile, listenSongs, deleteMyProfile, deleteSong } from '../controller/user.js';
 import { requireSignIn } from '../middleware/authMiddleware.js';
 
 
@@ -24,6 +24,7 @@ router.put('/updateMyProfile', requireSignIn, updateMyProfile)
 
 router.delete('/deleteProfilePicture', requireSignIn, deleteProfilePicture)
 router.delete('/deleteMyProfile/:id', requireSignIn, deleteMyProfile)
+router.delete('/deleteSong/:id', deleteSong)
 
 
 // for songs 

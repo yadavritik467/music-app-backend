@@ -123,52 +123,7 @@ export const updateMyProfile = async (req, res) => {
     }
 }
 
-export const uploadSongs = async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id)
-        const { albumName, file, song } = req.body;
-        const existingAlbumName = user.albumCreation.find(album => album.albumName === albumName)
-        if (existingAlbumName) {
-            return res.status(401).json({ message: 'This album name is already exists' });
-        } else {
-            const myCloud = await cloudinary.v2.uploader.upload(file, {
-                folder: "music-image",
-                resource_type: "auto",
-            })
-            let uploadedSongsId = []
-            await Promise.all(song.map(async (s) => {
-                const myCloud_2 = await cloudinary.v2.uploader.upload(s?.base64Url, {
-                    folder: "songs",
-                    resource_type: "auto"
-                });
 
-                const newSong = await Song.create({
-                    songName: s.name,
-                    songs: {
-                        public_id: myCloud_2.public_id,
-                        url: myCloud_2.url,
-                    }
-                })
-                uploadedSongsId.push(newSong._id)
-                return newSong
-
-            }))
-            user?.albumCreation.push({
-                albumImage: {
-                    public_id: myCloud?.public_id,
-                    url: myCloud?.url
-                },
-                albumName: albumName,
-                uploadedSongs: uploadedSongsId,
-            });
-            await user.save()
-            return res.status(200).json({ message: 'Songs uploaded and data saved successfully', user });
-        }
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: error.message });
-    }
-}
 
 export const followUnFollowUser = async (req, res) => {
     try {
@@ -262,36 +217,6 @@ export const getAllUser = async (req, res) => {
     }
 }
 
-// for songs
-
-export const getAllSongs = async (req, res) => {
-    try {
-        const { page = 1, limit = 5, search } = req.query
-        const condition = search ? { songName: { $regex: new RegExp(search, 'i') } } : {}
-        const allSongs = await Song.find(condition, { songName: 1,songs:1 }).sort()
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
-        return res.status(200).json({ message: 'All songs fetched successfully', allSongs });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-}
-
-export const listenSongs = async (req, res) => {
-    try {
-        const song = await Song.findById(req.params.id)
-        if (!song.listeningCount.includes(req.user._id)) {
-            song.listeningCount.push(req.user._id)
-        }
-        await song.save()
-        return res.status(200).json({ message: 'Single song fetch', song })
-
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-}
-
-
 export const deleteMyProfile = async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
@@ -301,8 +226,6 @@ export const deleteMyProfile = async (req, res) => {
             await cloudinary.v2.uploader.destroy(user.profilePicture.public_id)
             user.profilePicture.public_id = null
             user.profilePicture.url = null
-
-
             const followerToUpdate = await User.find({ follower: req.params.id })
             const followingToUpdate = await User.find({ following: req.params.id })
             await Promise.all(followerToUpdate.map(async (follower) => {
@@ -325,3 +248,99 @@ export const deleteMyProfile = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+// for songs
+
+export const uploadSongs = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id)
+        const { albumName, file, song } = req.body;
+        const existingAlbumName = user.albumCreation.find(album => album.albumName === albumName)
+        if (existingAlbumName) {
+            return res.status(401).json({ message: 'This album name is already exists' });
+        } else {
+            const myCloud = await cloudinary.v2.uploader.upload(file, {
+                folder: "music-image",
+                resource_type: "auto",
+            })
+            let uploadedSongsId = []
+            await Promise.all(song.map(async (s) => {
+                const myCloud_2 = await cloudinary.v2.uploader.upload(s?.base64Url, {
+                    folder: "songs",
+                    resource_type: "auto"
+                });
+
+                const newSong = await Song.create({
+                    songName: s.name,
+                    songs: {
+                        public_id: myCloud_2.public_id,
+                        url: myCloud_2.url,
+                    }
+                })
+                uploadedSongsId.push(newSong._id)
+                return newSong
+
+            }))
+            user?.albumCreation.push({
+                albumImage: {
+                    public_id: myCloud?.public_id,
+                    url: myCloud?.url
+                },
+                albumName: albumName,
+                uploadedSongs: uploadedSongsId,
+            });
+            await user.save()
+            return res.status(200).json({ message: 'Songs uploaded and data saved successfully', user });
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+}
+
+export const getAllSongs = async (req, res) => {
+    try {
+        const { page = 1, limit = 5, search } = req.query
+        const condition = search ? { songName: { $regex: new RegExp(search, 'i') } } : {}
+        const allSongs = await Song.find(condition, { songName: 1, songs: 1, listeningCount: 1 }).sort()
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
+        return res.status(200).json({ message: 'All songs fetched successfully', allSongs });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+export const listenSongs = async (req, res) => {
+    try {
+        const song = await Song.findById(req.params.id)
+        if (!song.listeningCount.some(count => count._id.toString().trim() === req.user._id.toString().trim())) {
+            song.listeningCount.push(req.user._id)
+        }
+        await song.save()
+        return res.status(200).json({ message: 'Single song fetch', song })
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+export const deleteSong = async (req, res) => {
+    try {
+        const song = await Song.findById(req.params.id)
+        if (!song) {
+            return res.status(400).json({ message: 'Song not exists' })
+        } else {
+            await cloudinary.v2.uploader.destroy(song.songs.public_id, { resource_type: 'video' })
+            await User.updateOne(
+                { 'albumCreation.uploadedSongs': req.params.id },
+                { $pull: { 'albumCreation.$.uploadedSongs': req.params.id } }
+            )
+            await Song.findByIdAndDelete(req.params.id)
+            res.status(200).json({ message: 'Song deleted successfully' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
