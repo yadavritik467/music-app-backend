@@ -254,12 +254,12 @@ export const deleteMyProfile = async (req, res) => {
 export const uploadSongs = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-        const { albumName, file, song } = req.body;
+        const { albumName, albumImage, song } = req.body;
         const existingAlbumName = user.albumCreation.find(album => album.albumName === albumName)
         if (existingAlbumName) {
             return res.status(401).json({ message: 'This album name is already exists' });
         } else {
-            const myCloud = await cloudinary.v2.uploader.upload(file, {
+            const myCloud = await cloudinary.v2.uploader.upload(albumImage, {
                 folder: "music-image",
                 resource_type: "auto",
             })
