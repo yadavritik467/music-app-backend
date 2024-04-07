@@ -62,7 +62,25 @@ export const loginUser = async (req, res) => {
 
 export const myProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select("-password");
+        const user = await User.findById(req.user._id).select("-password").populate({
+            path: 'follower',
+            select: 'firstName lastName email profilePicture'
+        })
+            .populate({
+                path: 'following',
+                select: 'firstName lastName email profilePicture'
+            })
+            .populate({
+                path: 'visited',
+                select: 'firstName lastName email profilePicture'
+            })
+            .populate({
+                path: 'albumCreation',
+                populate: {
+                    path: 'uploadedSongs',
+                    select: 'songName songs listeningCount'
+                }
+            });;
         return res.status(200).json({ user })
     } catch (error) {
         res.status(500).json({ message: error.message });
